@@ -1,0 +1,8 @@
+fg_dice: 0.7714
+empty_accuracy: 0.9978
+global_dice: 0.8872
+fg_iou: 0.6817
+global_iou: 0.7973
+global_accuracy: 0.9757
+global_recall: 0.9202
+global_precision: 0.8565
