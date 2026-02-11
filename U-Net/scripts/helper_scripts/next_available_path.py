@@ -17,7 +17,7 @@ def next_available_path(path: Path) -> Path:
 
     i = 0
     while True:
-        candidate = parent / f"{stem}{i}{suffix}"
+        candidate = parent / f"{stem}_{i}{suffix}"
         if not candidate.exists():
             return candidate
         i += 1

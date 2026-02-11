@@ -20,9 +20,7 @@ def compute_iou(pred, target, threshold):
         return 1.0 if intersection == 0 else 0.0
     return intersection / union
 
-# -----------------------------
 # Settings
-# -----------------------------
 checkpoint_path = r"data\checkpoints\checkpoint0_150_yes_common_meia_velha.pth"
 name = "150_yes_common_meia_velha_new"
 

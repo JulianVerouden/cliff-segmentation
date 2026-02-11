@@ -76,6 +76,7 @@ class UNetResNet50(nn.Module):
 
         out = self.up0(d1)
         out = self.final_conv(out)
+        
         return out
 
 class UnifiedDiceCELoss(nn.Module):
@@ -125,13 +126,16 @@ class UnifiedDiceCELoss(nn.Module):
     def multiclass_dice_loss(self, preds, targets):
         preds = F.softmax(preds, dim=1)
         num_classes = preds.shape[1]
+
         # One-hot encode targets
         targets_onehot = F.one_hot(targets, num_classes=num_classes)  # [B,H,W,C]
         targets_onehot = targets_onehot.permute(0, 3, 1, 2).float()   # [B,C,H,W]
+
         # Flatten
         preds_flat = preds.contiguous().view(preds.shape[0], num_classes, -1)
         targets_flat = targets_onehot.contiguous().view(targets.shape[0], num_classes, -1)
         intersection = (preds_flat * targets_flat).sum(-1)
         union = preds_flat.sum(-1) + targets_flat.sum(-1)
         dice_score = (2. * intersection + self.smooth) / (union + self.smooth)
+
         return 1 - dice_score.mean()

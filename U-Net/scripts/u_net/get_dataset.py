@@ -14,14 +14,14 @@ import albumentations as A
 from albumentations.pytorch import ToTensorV2
 import torch
 import numpy as np
+from typing import Optional
 
 
 class SegmentationDataset(Dataset):
-    def __init__(self, image_dir, mask_dir, transform=None, ordered=False):
+    def __init__(self, image_dir, mask_dir, transform=None):
         self.image_dir = image_dir
         self.mask_dir = mask_dir
         self.transform = transform
-        self.ordered = ordered
 
         self.image_dir = Path(image_dir)
         self.mask_dir = Path(mask_dir)
@@ -41,7 +41,7 @@ class SegmentationDataset(Dataset):
             stem = img_path.stem
 
             # Find corresponding mask
-            mask_path: Path = self.masks.get(stem)
+            mask_path: Optional[Path] = self.masks.get(stem)
             if mask_path is None:
                 raise FileNotFoundError(f"No mask found for image {img_path.name}")
 

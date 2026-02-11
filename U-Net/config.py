@@ -24,6 +24,7 @@ class TrainConfig:
     tile_w: int = 256
     tile_h: int = 256
     tile_threshold: int = 50
+    balance_dataset: bool = True # Keep an even amount of tiles with and without the segmentation target.
 
     # Stats
     stats_file: Optional[Path] = None
@@ -32,9 +33,12 @@ class TrainConfig:
     segmentation_threshold: float = 0.5
     seed: int = 42
     augmentation_method: AugmentationMethod = AugmentationMethod.MUMUNI
-    num_epochs: int = 150
-    # Accepts file paths to .pth files. Example -> Path("U-Net\output\checkpoints\test_checkpoint.pth")
-    pre_training: Optional[Path] = None
+    num_epochs: int = 1
+    num_classes: int = 1
+    num_channels: int = 3
+    # Accepts file paths to .pth files. Example -> Path(r"output\checkpoints\test_checkpoint.pth"). Use when you want to load your own checkpoint weights.
+    pretraining: Optional[Path] =  Path(r"output\checkpoints\test_checkpoint.pth")
+    load_IMAGENET1K_V1: bool = True
     train_split: float = 0.85
     batch_size: int = 8
     dropout_rate: float = 0.5

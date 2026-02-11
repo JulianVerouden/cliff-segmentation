@@ -29,6 +29,35 @@ def structure_data_folder(parent_dir, dir_input, dir_output):
         if item.is_file():
             shutil.move(str(item), dir_input / item.name)
 
+def balance_dataset(contains_plant, does_not_contain_plant, cfg):
+    keep_percentage = min(1, len(contains_plant) / len(does_not_contain_plant))
+
+    print(f"Keeping {keep_percentage} of tiles without target.")
+
+    skip_tiles = []
+    total_tiles_len = len(contains_plant) + len(does_not_contain_plant)
+
+    # Randomly select tiles without target to be discarded. The goal is to get the same amount of tiles with and without the target.
+    for i, tile in enumerate(does_not_contain_plant):
+        if random.random() > keep_percentage:
+            skip_tiles.append(tile)
+
+    # Remove selected tile masks and images
+    for tile_name in skip_tiles:
+        img_path = cfg.tiles_img_dir / tile_name
+        mask_path = cfg.tiles_mask_dir / tile_name
+
+        try:
+            img_path.unlink()
+            mask_path.unlink()
+        except FileNotFoundError:
+            pass
+
+    # Log dataset stats
+    total_kept = total_tiles_len - len(skip_tiles)
+
+    print(f"Total across dataset: kept {total_kept}, skipped {len(skip_tiles)}")
+    print(f"Of the {total_kept} kept, {len(contains_plant)} contain target.")
 
 # Create tiles of a specified size from data folder
 def tile_images(cfg: TrainConfig) -> None:
@@ -38,10 +67,8 @@ def tile_images(cfg: TrainConfig) -> None:
     image_files = [p for p in cfg.image_dir.iterdir() if p.is_file()]
     mask_files = {p.stem: p for p in cfg.mask_dir.iterdir() if p.is_file()}
 
-    total_kept = 0
-    total_kept_plants = 0
-    total_skipped = 0
-    stats = []
+    contains_plant = []
+    does_not_contain_plant = []
 
     for img_path in image_files:
         base_name = img_path.stem
@@ -67,57 +94,39 @@ def tile_images(cfg: TrainConfig) -> None:
         grid_x = math.ceil(W / cfg.tile_w)
         grid_y = math.ceil(H / cfg.tile_h)
 
+        # List of coordinates evenly spread evenly across the image
         x_coords = np.linspace(0, W - cfg.tile_w, grid_x, dtype=int)
         y_coords = np.linspace(0, H - cfg.tile_h, grid_y, dtype=int)
 
-        kept_tiles = 0
-        kept_tiles_plant = 0
-        skipped_tiles = 0
-
+        # Loop through all tiles in an image
         for i, y in enumerate(y_coords):
             for j, x in enumerate(x_coords):
+                # Crop to tile
                 img_tile = image.crop((x, y, x + cfg.tile_w, y + cfg.tile_h))
                 mask_tile = mask.crop((x, y, x + cfg.tile_w, y + cfg.tile_h))
 
+                # Bin image mask
                 mask_arr = np.array(mask_tile)
                 mask_bin = (mask_arr >= cfg.tile_threshold).astype(np.uint8) * 255
-
-                if mask_bin.sum() == 0:
-                    if random.random() < 0.9:
-                        skipped_tiles += 1
-                        continue
-                else:
-                    kept_tiles_plant += 1
 
                 mask_tile = Image.fromarray(mask_bin, mode="L")
 
                 tile_img_name = f"{base_name}_{i}_{j}.png"
 
+                # Save img and mask tile
                 img_tile.save(cfg.tiles_img_dir / tile_img_name)
                 mask_tile.save(cfg.tiles_mask_dir / tile_img_name)
 
-                kept_tiles += 1
+                # Separate tiles that contain none of the target
+                if mask_bin.sum() == 0:
+                    does_not_contain_plant.append(tile_img_name)
+                else:
+                    contains_plant.append(tile_img_name)
 
-        total_kept += kept_tiles
-        total_kept_plants += kept_tiles_plant
-        total_skipped += skipped_tiles
-        stats.append([img_path, kept_tiles, kept_tiles_plant, skipped_tiles])
-
-        print(f"{img_path}: kept {kept_tiles}, skipped {skipped_tiles}")
-
-    if cfg.stats_file is not None:
-        with open(next_available_path(cfg.stats_file), mode="w", newline="") as f:
-            writer = csv.writer(f)
-            writer.writerow(
-                ["filename", "kept_tiles", "kept_tiles_plants", "skipped_tiles"]
-            )
-            writer.writerows(stats)
-            writer.writerow(["TOTAL", total_kept, total_kept_plants, total_skipped])
-
-        print("=" * 40)
-        print(f"Total across dataset: kept {total_kept}, skipped {total_skipped}")
-        print(f"Stats saved to {cfg.stats_file}")
-        print("=" * 40)
+    if cfg.balance_dataset:
+        balance_dataset(contains_plant, does_not_contain_plant, cfg)
+    else:
+        print(f"Saved a total of {len(contains_plant) + len(does_not_contain_plant)} tiles, of which {len(contains_plant)} contain target.")
 
 
 def parse_args() -> argparse.Namespace:

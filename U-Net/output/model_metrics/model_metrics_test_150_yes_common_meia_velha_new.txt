@@ -1,5 +1,0 @@
-dice: 0.8260
-iou: 0.7036
-accuracy: 0.9759
-recall: 0.8347
-precision: 0.8174
