@@ -9,6 +9,16 @@ class AugmentationMethod(Enum):
     BADROUSS = "badrouss"
     MA = "ma"
     
+class GenerateTestSplit(Enum):
+    RANDOM = "random"           # Create a train/test split by selecting random images for either set
+    SPATIAL = "spatial"         # Create a train/test split by clustering images based on their XY coordinates. 
+                                # Code in image_metadata.py might require changes based on how metadata is structured in your dataset.
+
+class UseTestSplit(Enum):
+    FORCE = "force"             # Force a new dataset split, even if one already exists for the current dataset.
+    DIRECTORY = "directory"     # Use images in dataset folder for training/validation. Use images in a separate directory for 
+    CSV = "CSV"                 # Use train/test split from csv, if none exists for the current dataset, create a new one.
+
 @dataclass
 class TrainConfig:
     # Base directories (dataset-specific)
@@ -19,6 +29,7 @@ class TrainConfig:
     mask_dir: Path
     tiles_img_dir: Path
     tiles_mask_dir: Path
+    metadata_file: Path
 
     # Tiling parameters
     tile_w: int = 256
@@ -45,19 +56,27 @@ class TrainConfig:
     dice_weight: float = 0.7
     learning_rate: float = 1e-4
 
+    # Test parameters
+    test_split_method: GenerateTestSplit = GenerateTestSplit.RANDOM
+    use_test_split: UseTestSplit = UseTestSplit.CSV
+    test_dataset_dir: Optional[Path] = None # Required when test_split_method is DataSplit.DIRECTORY
+    checkpoint_path: Optional[Path] = Path(r"output\checkpoints\example_data\checkpoint_example_data_1_mumuni_IMAGENET1K_V1.pth")
+    random_split_seed: int = 42
+    eps_meters: int = 60 # Max distance for clustering during spatial test split generation
+    train_fraction: float = 0.85
+
+# Build a TileConfig for a given dataset name.
 def make_train_config(dataset_name: str) -> TrainConfig:
-    """
-    Build a TileConfig for a given dataset name.
-    """
     base = Path("data")
 
     return TrainConfig(
         dataset_name = dataset_name,
-        base_img_dir    =base / "images" / dataset_name,
-        base_mask_dir   =base / "masks" / dataset_name, 
-        image_dir       =base / "images" / dataset_name / "full" ,
-        mask_dir        =base / "masks" / dataset_name / "full" ,
-        tiles_img_dir   =base / "images" / dataset_name / "tiles" ,
-        tiles_mask_dir  =base / "masks" / dataset_name / "tiles" ,
-        stats_file      =base / f"tile_stats_{dataset_name}.csv",
+        base_img_dir    =base / dataset_name / "images",
+        base_mask_dir   =base / dataset_name / "masks", 
+        image_dir       =base / dataset_name / "images" / "full" ,
+        mask_dir        =base / dataset_name / "masks" / "full" ,
+        tiles_img_dir   =base / dataset_name / "images" / "tiles" ,
+        tiles_mask_dir  =base / dataset_name / "masks" / "tiles" ,
+        stats_file      =base / dataset_name / f"tile_stats_{dataset_name}.csv",
+        metadata_file   =base / dataset_name / f"metadata_{dataset_name}.csv",
     )

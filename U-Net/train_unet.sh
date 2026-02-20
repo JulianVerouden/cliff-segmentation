@@ -5,5 +5,9 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$ROOT_DIR"
 
 echo "$1"
-python scripts/u_net/pre_processing.py --dataset_name example_data
-# python scripts/u_net/training_loop.py --dataset_name example_data
+
+# Default train/test loop
+python train_test_supervision.py --dataset_name example_data --train --test
+
+# Reset dataset structuring
+# python train_test_supervision.py --dataset_name example_data --reset 

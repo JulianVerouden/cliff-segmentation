@@ -128,23 +128,69 @@ def tile_images(cfg: TrainConfig) -> None:
     else:
         print(f"Saved a total of {len(contains_plant) + len(does_not_contain_plant)} tiles, of which {len(contains_plant)} contain target.")
 
+def undo_pre_processing(cfg: TrainConfig):    
+    """
+    Moves all contents from:
+        data/<dataset_name>/full/
+    to:
+        data/<dataset_name>/
 
-def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Tile image/mask datasets.")
-    parser.add_argument(
-        "--dataset_name",
-        required=True,
-        help="Name of the dataset subfolder (e.g. meia_velha)",
-    )
-    return parser.parse_args()
+    Then deletes:
+        data/<dataset_name>/tiles/
+    """
+    # Validate structure
+    if not cfg.image_dir.is_dir():
+        raise FileNotFoundError(f"Missing 'full' directory: {cfg.image_dir}")
 
+    if not cfg.mask_dir.is_dir():
+        raise FileNotFoundError(f"Missing 'full' directory: {cfg.mask_dir}")
+    
+    if not cfg.tiles_img_dir.is_dir():
+        raise FileNotFoundError(f"Missing 'tiles' directory: {cfg.tiles_img_dir}")
 
-def main() -> None:
-    args = parse_args()
+    if not cfg.tiles_mask_dir.is_dir():
+        raise FileNotFoundError(f"Missing 'tiles' directory: {cfg.tiles_mask_dir}")
+    
+    if not cfg.base_img_dir.is_dir():
+        raise FileNotFoundError(f"Dataset directory not found: {cfg.base_img_dir}")
+    
+    if not cfg.base_mask_dir.is_dir():
+        raise FileNotFoundError(f"Dataset directory not found: {cfg.base_mask_dir}")
 
-    cfg = make_train_config(args.dataset_name)
+    # Move Images
+    for item in cfg.image_dir.iterdir():
+        target = cfg.base_img_dir / item.name
+
+        if target.exists():
+            raise FileExistsError(
+                f"Target already exists, refusing to overwrite: {target}"
+            )
+
+        shutil.move(str(item), str(target))
+
+    # Remove empty 'images' directory
+    cfg.image_dir.rmdir()
+
+    # Move Masks
+    for item in cfg.mask_dir.iterdir():
+        target = cfg.base_mask_dir / item.name
+
+        if target.exists():
+            raise FileExistsError(
+                f"Target already exists, refusing to overwrite: {target}"
+            )
+
+        shutil.move(str(item), str(target))
+
+    # Remove empty 'masks' directory
+    cfg.mask_dir.rmdir()
+
+    # Remove 'tiles' directories if they exist
+    if cfg.tiles_img_dir.exists():
+        shutil.rmtree(cfg.tiles_img_dir)
+        
+    if cfg.tiles_mask_dir.exists():
+        shutil.rmtree(cfg.tiles_mask_dir)
+
+def main(cfg: TrainConfig) -> None:
     tile_images(cfg)
-
-
-if __name__ == "__main__":
-    main()

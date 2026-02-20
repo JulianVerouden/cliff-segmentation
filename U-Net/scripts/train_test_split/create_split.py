@@ -1,3 +1,12 @@
+import sys
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(ROOT))
+
+import argparse
+from config import make_train_config, TrainConfig, GenerateTestSplit
+
 import pandas as pd
 from sklearn.cluster import DBSCAN
 import matplotlib.pyplot as plt
@@ -5,12 +14,6 @@ import os
 import shutil
 import numpy as np
 import argparse
-
-# ---------- CONFIG ----------
-csv_path = r"data\train_test_split_meia_velha.csv"
-eps_meters = 60          # distance threshold for clustering (adjust as needed)
-train_fraction = 0.85    # fraction of tiles for training set
-random_seed = 42          # for reproducibility
 
 # ---------- FUNCTIONS ----------
 def perform_spatial_split(df, eps_meters, train_fraction):
@@ -131,12 +134,13 @@ def move_tiles(df, name=None):
     _move(tiles_masks_test, mask_folder, os.path.join(mask_folder, "test"))
 
 # ---------- MAIN ----------
-def main(spatial_split=True, seed=random_seed, name=None):
-    if spatial_split:
+def main(cfg: TrainConfig):
+    if (cfg.test_split_method == GenerateTestSplit.SPATIAL):
+        csv_path = Path(cfg.base_img_dir, f"metadata_{cfg.dataset_name}.csv")
         df = pd.read_csv(csv_path)
-        df = perform_spatial_split(df, eps_meters, train_fraction)
+        df = perform_spatial_split(df, cfg.eps_meters, cfg.train_fraction)
         df.to_csv(csv_path, index=False)
-        move_tiles(df, name)
+        move_tiles(df, cfg.dataset_name)
         
         # Sanity check & plot
         total_tiles = df["tile_count"].sum()
@@ -145,29 +149,15 @@ def main(spatial_split=True, seed=random_seed, name=None):
         print(f"Set A (training): {tiles_a} tiles ({tiles_a / total_tiles:.1%})")
         print(f"Set B (test): {tiles_b} tiles ({tiles_b / total_tiles:.1%})")
         plot_split(df)
-    else:
+    elif(cfg.test_split_method == GenerateTestSplit.SPATIAL):
         # Determine folders
-        if name:
-            image_folder = os.path.join("data", "images", name, "tiles")
-            mask_folder = os.path.join("data", "masks", name, "tiles")
-        else:
-            image_folder = os.path.join("data", "images", "tiles")
-            mask_folder = os.path.join("data", "masks", "tiles")
+        image_folder = os.path.join("data", "images", cfg.dataset_name, "tiles")
+        mask_folder = os.path.join("data", "masks", cfg.dataset_name, "tiles")
         
         print("Creating a random tile split")
         random_tile_split(
             image_folder=image_folder,
             mask_folder=mask_folder,
-            train_fraction=train_fraction,
-            seed=seed
+            train_fraction=cfg.train_fraction,
+            seed=cfg.random_split_seed
         )
-
-# ---------- RUN ----------
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Split dataset spatially or randomly.")
-    parser.add_argument("--spatial_split", type=int, default=1, help="1 for spatial split, 0 for random tile split")
-    parser.add_argument("--seed", type=int, default=42, help="Random seed")
-    parser.add_argument("--name", type=str, default=None, help="Dataset name (e.g., meia_velha). Optional")
-    args = parser.parse_args()
-
-    main(spatial_split=bool(args.spatial_split), seed=args.seed, name=args.name)

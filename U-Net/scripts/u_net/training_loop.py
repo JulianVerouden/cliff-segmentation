@@ -5,19 +5,17 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
 
 import argparse
-from config import make_train_config, TrainConfig
+from config import TrainConfig
 
 import torch.optim as optim
-import torch.nn as nn
 import torch
 import matplotlib.pyplot as plt
 from torch.utils.data import DataLoader, random_split
 
-from get_dataset import SegmentationDataset, get_train_transforms
-from unet_model import UNetResNet50, UnifiedDiceCELoss
+from scripts.u_net.get_dataset import SegmentationDataset, get_train_transforms
+from scripts.u_net.unet_model import UNetResNet50, UnifiedDiceCELoss
 from scripts.helper_scripts.next_available_path import next_available_path
 
-import numpy as np
 import os
 
 # Metric computation
@@ -218,11 +216,5 @@ def parse_args() -> argparse.Namespace:
     )
     return parser.parse_args()
 
-def main() -> None:
-    args = parse_args()
-
-    cfg = make_train_config(args.dataset_name)
+def main(cfg: TrainConfig) -> None:
     train(cfg)
-
-if __name__ == "__main__":
-    main()
