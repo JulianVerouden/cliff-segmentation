@@ -10,7 +10,7 @@ from config import make_train_config, TrainConfig, UseTestSplit
 import scripts.u_net.pre_processing as pre_processing
 import scripts.train_test_split.image_metadata as image_metadata
 import scripts.u_net.training_loop as training_loop
-# import scripts.u_net.test_loop as test_loop
+import scripts.u_net.test_loop as test_loop
 import scripts.helper_scripts.next_available_path as next_path
 
 import scripts.train_test_split.create_split as create_split
@@ -121,7 +121,7 @@ def main() -> None:
         if (args.train):
             training_loop.main(cfg)
         if(args.test):
-            print("Handle testing")
+            test_loop.main(cfg, not args.train)
 
 if __name__ == "__main__":
     main()

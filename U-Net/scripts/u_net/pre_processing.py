@@ -4,13 +4,11 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
 
-from config import make_train_config, TrainConfig
+from config import TrainConfig
 
 import os
-import csv
 import math
 import random
-import argparse
 from pathlib import Path
 import shutil
 

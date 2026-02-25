@@ -1,5 +1,4 @@
 from pathlib import Path
-import re
 from typing import Optional
 
 def next_available_path(path: Path) -> Path:

@@ -1,12 +1,18 @@
+import sys
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(ROOT))
+
+from config import InferenceConfig
 import os
 from PIL import Image
 import torch
 import numpy as np
 import torchvision.transforms as T
 
-# -------------------------
+
 # Device & Transform
-# -------------------------
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 inference_transform = T.Compose([
@@ -15,20 +21,17 @@ inference_transform = T.Compose([
                 std=[0.229, 0.224, 0.225])
 ])
 
-# -------------------------
-# Main function
-# -------------------------
-def run_inference_on_tiles(tile_dir, out_prob_dir, out_mask_dir, model):
-    os.makedirs(out_prob_dir, exist_ok=True)
-    os.makedirs(out_mask_dir, exist_ok=True)
+def run_inference_on_tiles(cfg: InferenceConfig, model):
+    os.makedirs(cfg.prob_dir, exist_ok=True)
+    os.makedirs(cfg.mask_dir, exist_ok=True)
 
-    tiles = [f for f in os.listdir(tile_dir) if f.endswith(".png")]
+    tiles = [f for f in os.listdir(cfg.tile_dir) if f.endswith(".png")]
 
     for t in tiles:
-        tile_path = os.path.join(tile_dir, t)
+        tile_path = os.path.join(cfg.tile_dir, t)
         img = Image.open(tile_path).convert("RGB")
 
-        # ----- Run model -----
+        # Run model
         x = inference_transform(img).unsqueeze(0).to(device)
 
         with torch.no_grad():
@@ -39,13 +42,13 @@ def run_inference_on_tiles(tile_dir, out_prob_dir, out_mask_dir, model):
         prob = pred
 
         # binary mask
-        mask = (prob >= 0.5).astype(np.uint8) * 255
+        mask = (prob >= cfg.segmentation_threshold).astype(np.uint8) * 255
 
         # Save prob & mask
         base = t.replace(".png", "")
         Image.fromarray((prob * 255).astype(np.uint8)).save(
-            os.path.join(out_prob_dir, f"{base}_prob.png")
+            os.path.join(cfg.prob_dir, f"{base}_prob.png")
         )
         Image.fromarray(mask).save(
-            os.path.join(out_mask_dir, f"{base}_mask.png")
+            os.path.join(cfg.mask_dir, f"{base}_mask.png")
         )

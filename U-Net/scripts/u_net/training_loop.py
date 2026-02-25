@@ -4,7 +4,6 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
 
-import argparse
 from config import TrainConfig, DatasetMode
 
 import torch.optim as optim
@@ -17,6 +16,7 @@ from scripts.u_net.unet_model import UNetResNet50, UnifiedDiceCELoss
 from scripts.helper_scripts.next_available_path import next_available_path
 
 import os
+import json
 
 # Metric computation
 def compute_segmentation_metrics(preds, masks, threshold=0.5, eps=1e-8):
@@ -57,17 +57,7 @@ def compute_segmentation_metrics(preds, masks, threshold=0.5, eps=1e-8):
     }
 
 # Training pipeline
-def train(cfg: TrainConfig):    
-    # Generate file name suffixes -> <datasetname>_<epochs>_<augmentation_method>_<(Optional) pretraining>
-    name_parts = [cfg.dataset_name, str(cfg.num_epochs), str(cfg.augmentation_method.value)]
-
-    if cfg.pretraining != None:
-        name_parts.append(cfg.pretraining.stem)
-    elif cfg.load_IMAGENET1K_V1:
-        name_parts.append("IMAGENET1K_V1")
-
-    name = '_'.join(name_parts)
-
+def train(cfg: TrainConfig):
     # Dataset
     full_dataset = SegmentationDataset(
         cfg,
@@ -104,16 +94,23 @@ def train(cfg: TrainConfig):
     train_losses, val_losses = train_loop(cfg, model, train_loader, val_loader, device, loss_fn, optimizer)
 
     # Save Model
-    os.makedirs(f"output/checkpoints/{cfg.dataset_name}", exist_ok=True)
-    model_path = next_available_path(Path(f"output/checkpoints/{cfg.dataset_name}/checkpoint_{name}.pth"))
+    os.makedirs(cfg.checkpoint_dir, exist_ok=True)
+    model_path = next_available_path(cfg.checkpoint)
     torch.save(model.state_dict(), model_path)
     print(f"Model saved to: {model_path}")
 
+    config_path = cfg.checkpoint.with_suffix(".json")
+
+    with config_path.open("w") as f:
+        json.dump(cfg.to_dict(), f, indent=4)
+
+    print(f"Saved config to {config_path}")
+
     # Plot Loss
-    plos_loss_curves(cfg, train_losses, val_losses, name)
+    plot_loss_curves(cfg, train_losses, val_losses)
 
     # Final validation metrics and threshold sweep
-    model_eval(cfg, model, val_loader, device, name)
+    model_eval(cfg, model, val_loader, device)
 
 # Training loop that returns train and validation losses
 def train_loop(cfg, model, train_loader, val_loader, device, loss_fn, optimizer):
@@ -156,10 +153,10 @@ def train_loop(cfg, model, train_loader, val_loader, device, loss_fn, optimizer)
     return train_losses, val_losses
 
 # Create and save validation and train loss curves
-def plos_loss_curves(cfg: TrainConfig, train_losses, val_losses, name):
-    loss_curve_path = next_available_path(Path(f"output/loss_curves/{cfg.dataset_name}/loss_curves_{name}.png", dpi=300))
+def plot_loss_curves(cfg: TrainConfig, train_losses, val_losses):
+    loss_curve_path = next_available_path(cfg.loss_curves)
 
-    os.makedirs(f"output/loss_curves/{cfg.dataset_name}", exist_ok=True)
+    os.makedirs(cfg.loss_curves_dir, exist_ok=True)
     plt.figure(figsize=(8, 5))
     plt.plot(range(1, cfg.num_epochs + 1), train_losses, label="Training Loss", marker='o')
     plt.plot(range(1, cfg.num_epochs + 1), val_losses, label="Validation Loss", marker='s')
@@ -171,9 +168,8 @@ def plos_loss_curves(cfg: TrainConfig, train_losses, val_losses, name):
     plt.tight_layout()
 
     plt.savefig(loss_curve_path)
-    plt.show()
 
-def model_eval(cfg, model, val_loader, device, name):
+def model_eval(cfg: TrainConfig, model, val_loader, device):
     print("\nRunning final validation metrics...")
 
     all_preds = []
@@ -198,23 +194,14 @@ def model_eval(cfg, model, val_loader, device, name):
         print(f"{k}: {v:.4f}")
 
     # Save metrics
-    os.makedirs(f"output/model_metrics/{cfg.dataset_name}", exist_ok=True)
-    model_metrics_path = next_available_path(Path(f"output/model_metrics/{cfg.dataset_name}/model_metrics_{name}.txt"))
+    os.makedirs(cfg.model_metrics_dir, exist_ok=True)
+    model_metrics_path = next_available_path(cfg.model_metrics)
 
     with open(model_metrics_path, "w") as f:
         for k, v in final_metrics.items():
             f.write(f"{k}: {v:.4f}\n")
 
     print(f"\nValidation metrics saved to {model_metrics_path}")
-
-def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="U-Net training loop.")
-    parser.add_argument(
-        "--dataset_name",
-        required=True,
-        help="Name of the dataset subfolder (e.g. meia_velha)",
-    )
-    return parser.parse_args()
 
 def main(cfg: TrainConfig) -> None:
     train(cfg)

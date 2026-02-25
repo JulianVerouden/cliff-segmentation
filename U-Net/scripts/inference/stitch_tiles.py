@@ -1,27 +1,27 @@
+import sys
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(ROOT))
+
+from config import InferenceConfig
+
 import os
 import numpy as np
 from PIL import Image
+from pathlib import Path
 
 def stitch_image(
-    name,
-    meta_dir="meta",
-    prob_dir="prob_tiles",
-    mask_dir="mask_tiles",
-    output_path=""  # new parameter
+    cfg: InferenceConfig,
+    name
 ):
-    meta_path = os.path.join(meta_dir, f"{name}_meta.npy")
+    meta_path = os.path.join(cfg.meta_dir, f"{name}_meta.npy")
     if not os.path.exists(meta_path):
         raise FileNotFoundError(f"Meta file not found: {meta_path}")
 
     meta = np.load(meta_path, allow_pickle=True).item()
     W, H = meta["W"], meta["H"]
     tiles = meta["tiles"]
-
-    # Ensure output folder exists
-    if output_path:
-        os.makedirs(output_path, exist_ok=True)
-    else:
-        output_path = ""  # fallback to current folder
 
     # Initialize accumulators
     prob_acc = np.zeros((H, W), dtype=np.float32)
@@ -34,8 +34,8 @@ def stitch_image(
         base = t["tile"].replace(".png", "")
 
         # Load tile probability and mask
-        prob_tile = np.array(Image.open(os.path.join(prob_dir, f"{base}_prob.png"))) / 255.0
-        mask_tile = np.array(Image.open(os.path.join(mask_dir, f"{base}_mask.png"))) / 255.0
+        prob_tile = np.array(Image.open(os.path.join(cfg.prob_dir, f"{base}_prob.png"))) / 255.0
+        mask_tile = np.array(Image.open(os.path.join(cfg.mask_dir, f"{base}_mask.png"))) / 255.0
 
         h_tile, w_tile = prob_tile.shape
 
@@ -54,8 +54,11 @@ def stitch_image(
     mask_final = (mask_acc / mask_count) > 0.5
 
     # Save stitched images to output_path
-    prob_path = os.path.join(output_path, "probs", f"{name}_prob_full.png")
-    mask_path = os.path.join(output_path, "masks", f"{name}_mask_full.png") 
+    os.makedirs(Path(cfg.output_dir, "probs"), exist_ok=True)
+    os.makedirs(Path(cfg.output_dir, "masks"), exist_ok=True)
+
+    prob_path = os.path.join(cfg.output_dir, "probs", f"{name}_prob_full.png")
+    mask_path = os.path.join(cfg.output_dir, "masks", f"{name}_mask_full.png") 
 
     Image.fromarray((prob_final * 255).astype(np.uint8)).save(prob_path)
     Image.fromarray(mask_final.astype(np.uint8) * 255).save(mask_path)
