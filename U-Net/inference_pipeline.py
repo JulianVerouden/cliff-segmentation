@@ -14,7 +14,6 @@ from scripts.u_net.unet_model import UNetResNet50
 from config import InferenceConfig, make_train_config
 
 def run_inference(cfg: InferenceConfig):
-    # Settings
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     if (not cfg.checkpoint.exists()):
