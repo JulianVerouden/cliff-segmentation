@@ -4,10 +4,10 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from config import AugmentationMethod
+from config import AugmentationMethod, TrainConfig, UseTestSplit, DatasetMode
 
 import cv2
-import os
+import csv
 from torch.utils.data import Dataset
 import matplotlib.pyplot as plt
 import albumentations as A
@@ -18,20 +18,55 @@ from typing import Optional
 
 
 class SegmentationDataset(Dataset):
-    def __init__(self, image_dir, mask_dir, transform=None):
-        self.image_dir = image_dir
-        self.mask_dir = mask_dir
+    def __init__(self, cfg: TrainConfig, transform=None, mode: DatasetMode = DatasetMode.TRAIN):
+        self.image_dir = Path(cfg.tiles_img_dir)
+        self.mask_dir = Path(cfg.tiles_mask_dir)
+        self.mode = mode
         self.transform = transform
 
-        self.image_dir = Path(image_dir)
-        self.mask_dir = Path(mask_dir)
-        self.transform = transform
+        if (cfg.use_test_split == UseTestSplit.NONE or cfg.use_test_split == UseTestSplit.DIRECTORY):
+            # List all files in the image_dir
+            self.images = [p for p in self.image_dir.iterdir() if p.is_file()]
 
-        # List all files in the image_dir
-        self.images = [p for p in self.image_dir.iterdir() if p.is_file()]
+            # Build a lookup for masks by stem
+            self.masks = {p.stem: p for p in self.mask_dir.iterdir() if p.is_file()}
+        else:
+            split_csv = Path(cfg.test_split)
 
-        # Build a lookup for masks by stem
-        self.masks = {p.stem: p for p in self.mask_dir.iterdir() if p.is_file()}
+            # Read CSV and collect train filenames
+            train_filenames = set()
+
+            with split_csv.open("r", newline="", encoding="utf-8") as f:
+                reader = csv.DictReader(f)
+
+                if reader.fieldnames is None:
+                    raise ValueError("Split CSV has no header row.")
+
+                required = {"filename", "set"}
+                if not required.issubset(reader.fieldnames):
+                    raise ValueError(
+                        f"Split CSV must contain columns {required}, "
+                        f"but got {reader.fieldnames}"
+                    )
+
+                train_filenames = {
+                    Path(row["filename"]).stem
+                    for row in reader
+                    if row["set"].lower() == mode.value
+                }
+
+            # Collect images that belong to train or test set
+            self.images = [
+                p for p in self.image_dir.iterdir()
+                if p.is_file() and p.stem in train_filenames
+            ]
+
+            # Build mask lookup
+            self.masks = {
+                p.stem: p
+                for p in self.mask_dir.iterdir()
+                if p.is_file()
+            }
 
     def __len__(self):
         return len(self.images)

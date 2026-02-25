@@ -11,18 +11,24 @@ class AugmentationMethod(Enum):
     
 class GenerateTestSplit(Enum):
     RANDOM = "random"           # Create a train/test split by selecting random images for either set
-    SPATIAL = "spatial"         # Create a train/test split by clustering images based on their XY coordinates. 
+    SPATIAL = "spatial"         # Create a train/test split by clustering images based on their XY coordinates. Split works better with larger datasets.
                                 # Code in image_metadata.py might require changes based on how metadata is structured in your dataset.
 
 class UseTestSplit(Enum):
     FORCE = "force"             # Force a new dataset split, even if one already exists for the current dataset.
     DIRECTORY = "directory"     # Use images in dataset folder for training/validation. Use images in a separate directory for 
     CSV = "CSV"                 # Use train/test split from csv, if none exists for the current dataset, create a new one.
+    NONE = "none"               # Use all images for training
+
+class DatasetMode(Enum):
+    TRAIN = "train"
+    TEST = "test"
 
 @dataclass
 class TrainConfig:
     # Base directories (dataset-specific)
     dataset_name: str
+    dataset_dir: Path
     base_img_dir: Path
     base_mask_dir: Path
     image_dir: Path
@@ -30,6 +36,7 @@ class TrainConfig:
     tiles_img_dir: Path
     tiles_mask_dir: Path
     metadata_file: Path
+    test_split: Path
 
     # Tiling parameters
     tile_w: int = 256
@@ -71,6 +78,7 @@ def make_train_config(dataset_name: str) -> TrainConfig:
 
     return TrainConfig(
         dataset_name = dataset_name,
+        dataset_dir     =base / dataset_name,
         base_img_dir    =base / dataset_name / "images",
         base_mask_dir   =base / dataset_name / "masks", 
         image_dir       =base / dataset_name / "images" / "full" ,
@@ -79,4 +87,5 @@ def make_train_config(dataset_name: str) -> TrainConfig:
         tiles_mask_dir  =base / dataset_name / "masks" / "tiles" ,
         stats_file      =base / dataset_name / f"tile_stats_{dataset_name}.csv",
         metadata_file   =base / dataset_name / f"metadata_{dataset_name}.csv",
+        test_split      =base / dataset_name / f"test_split_{dataset_name}.csv",
     )

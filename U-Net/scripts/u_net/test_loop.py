@@ -10,7 +10,7 @@ from torch.utils.data import DataLoader
 import os
 
 import argparse
-from config import make_train_config, TrainConfig
+from config import make_train_config, TrainConfig, DatasetMode
 
 from get_dataset import SegmentationDataset, get_train_transforms
 from unet_model import UNetResNet50
@@ -49,9 +49,9 @@ def test(cfg: TrainConfig):
     # -----------------------------
     # If you don't have a special test-transform, reuse validation transforms:
     test_dataset = SegmentationDataset(
-        test_images_path,
-        test_masks_path,
-        transform=get_train_transforms(augmentation=cfg.augmentation_method)
+        cfg,
+        transform=get_train_transforms(augmentation=cfg.augmentation_method),
+        mode=DatasetMode.TEST
     )
 
 
@@ -182,21 +182,5 @@ def test(cfg: TrainConfig):
 
     # print(f"\nSaved metrics to: {save_path}")
 
-
-def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="U-Net test loop.")
-    parser.add_argument(
-        "--dataset_name",
-        required=True,
-        help="Name of the dataset subfolder (e.g. meia_velha)",
-    )
-    return parser.parse_args()
-
-def main() -> None:
-    args = parse_args()
-
-    cfg = make_train_config(args.dataset_name)
+def main(cfg: TrainConfig) -> None:
     test(cfg)
-
-if __name__ == "__main__":
-    main()

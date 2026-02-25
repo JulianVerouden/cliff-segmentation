@@ -65,7 +65,7 @@ def handle_test_split(cfg: TrainConfig):
     elif(cfg.use_test_split == UseTestSplit.CSV):
         print("Use csv for train/test split.")
 
-        csv = next_path.find_latest_path(cfg.base_img_dir, cfg.dataset_name, "csv")
+        csv = next_path.find_latest_path(cfg.dataset_dir, f"metadata_{cfg.dataset_name}", "csv")
 
         if (csv == None):
             print("No CSV found for current dataset, generating new one.")
@@ -114,7 +114,7 @@ def main() -> None:
     
     if (args.reset):
         pre_processing.undo_pre_processing(cfg)
-    elif(args.train or args.test):
+    else:
         pre_process_dataset(cfg)
         handle_test_split(cfg)
         

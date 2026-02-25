@@ -5,7 +5,7 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
 
 import argparse
-from config import TrainConfig
+from config import TrainConfig, DatasetMode
 
 import torch.optim as optim
 import torch
@@ -70,9 +70,9 @@ def train(cfg: TrainConfig):
 
     # Dataset
     full_dataset = SegmentationDataset(
-        cfg.tiles_img_dir,
-        cfg.tiles_mask_dir,
-        transform=get_train_transforms(augmentation=cfg.augmentation_method)
+        cfg,
+        transform=get_train_transforms(augmentation=cfg.augmentation_method),
+        mode=DatasetMode.TRAIN
     )
 
     # Load model
