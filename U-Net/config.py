@@ -56,7 +56,7 @@ class BaseSegmentationConfig:
 class InferenceConfig(BaseSegmentationConfig):
     # Inference parameters
     checkpoint_name: str = field(init=False)
-    checkpoint: Path = Path(r"output\example_training_data\checkpoints\checkpoint_example_training_data_1_mumuni_IMAGENET1K_V1.pth")
+    checkpoint: Path = Path(r"output\example_training_data\checkpoints\checkpoint_example_training_data_50_mumuni_IMAGENET1K_V1.pth") # Replace with correct checkpoint
     input_image_dir: Path = Path(r"data\inference_images")
     output_dir: Path = field(init=False)
 
@@ -118,9 +118,9 @@ class TrainConfig(BaseSegmentationConfig):
     stats_file: Optional[Path] = None
 
     # Train/Test split parameters
-    test_split_method: GenerateTestSplit = GenerateTestSplit.RANDOM
+    test_split_method: GenerateTestSplit = GenerateTestSplit.SPATIAL
     use_test_split: UseTestSplit = UseTestSplit.CSV
-    test_dataset_dir: Optional[Path] = None # Required when test_split_method is DataSplit.DIRECTORY
+    test_dataset_dir: Optional[Path] = None # Required when use_test_split is DataSplit.DIRECTORY
     test_only_checkpoint: Optional[Path] = Path(r"output\example_data\checkpoints\checkpoint_example_data_1_mumuni_IMAGENET1K_V1.pth") # Required when only running test
     random_split_seed: int = 42
     eps_meters: int = 60 # Max distance for clustering during spatial test split generation
@@ -129,9 +129,9 @@ class TrainConfig(BaseSegmentationConfig):
     # Training parameters
     seed: int = 42
     augmentation_method: AugmentationMethod = AugmentationMethod.MUMUNI
-    num_epochs: int = 1
+    num_epochs: int = 150
     # Accepts file paths to .pth files. Example -> Path(r"output\checkpoints\test_checkpoint.pth"). Use when you want to load your own checkpoint weights.
-    pretraining: Optional[Path] =  None
+    pretraining: Optional[Path] =  None # Overwrites load_IMAGENET1K_V1
     load_IMAGENET1K_V1: bool = True
     train_split: float = 0.85
     batch_size: int = 8
